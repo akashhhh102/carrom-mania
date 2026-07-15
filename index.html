@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrom Mania Premium</title>
+    <style>
+        body {
+            background-color: #1a1a24;
+            color: #f5f6fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        h1 {
+            margin: 10px 0 5px 0;
+            color: #f1c40f;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.7);
+            letter-spacing: 2px;
+            font-size: 2.2rem;
+        }
+
+        #scoreboard {
+            display: flex;
+            gap: 30px;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            background: #2f3640;
+            padding: 12px 25px;
+            border-radius: 30px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+            border: 2px solid #444;
+        }
+
+        .player-score {
+            padding: 5px 15px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .active-turn {
+            background-color: #d35400;
+            color: #fff;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(211, 84, 0, 0.6);
+        }
+
+        #game-container {
+            position: relative;
+            background: #2c1d11; /* Outer frame background shadow */
+            padding: 24px;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+            border: 4px solid #1e120a;
+        }
+
+        canvas {
+            background: #f3d4a2; /* Classic light carrom plywood color */
+            display: block;
+            cursor: crosshair;
+            border: 28px solid #4a2c11; /* Gorgeous thick wooden frame border */
+            border-radius: 2px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+        }
+
+        #controls {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 80%;
+        }
+
+        input[type=range] {
+            flex-grow: 1;
+            accent-color: #d35400;
+            cursor: pointer;
+        }
+
+        #msg {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #e1b12c;
+            height: 25px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>CARROM MANIA</h1>
+    
+    <div id="scoreboard">
+        <div id="user-box" class="player-score active-turn">👤 Player: <span id="user-score">0</span></div>
+        <div id="robot-box" class="player-score">🤖 Robot: <span id="robot-score">0</span></div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="carromBoard" width="600" height="600"></canvas>
+    </div>
+
+    <div id="controls">
+        <div class="slider-container">
+            <span style="font-size: 0.9rem; color: #aaa;">Position Striker:</span>
+            <input type="range" id="strikerX" min="95" max="505" value="300">
+        </div>
+        <div id="msg">Your Turn! Drag back from the striker and release to shoot.</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('carromBoard');
+        const ctx = canvas.getContext('2d');
+        const strikerSlider = document.getElementById('strikerX');
+        const msgDiv = document.getElementById('msg');
+
+        // Game Settings
+        const WINNING_SCORE = 160;
+        const FRICTION = 0.982;
+        const BOARD_SIZE = 600;
+        const POCKET_RADIUS = 26;
+        const COIN_RADIUS = 12.5;
+        const STRIKER_RADIUS = 17.5;
+
+        let scores = { player: 0, robot: 0 };
+        let currentTurn = 'player'; 
+        let isAiming = false;
+        let isMoving = false;
+        let coinScoredThisTurn = false;
+
+        // Realistic Pocket positions offset from edges
+        const pockets = [
+            { x: 30, y: 30 },
+            { x: BOARD_SIZE - 30, y: 30 },
+            { x: 30, y: BOARD_SIZE - 30 },
+            { x: BOARD_SIZE - 30, y: BOARD_SIZE - 30 }
+        ];
+
+        class Entity {
+            constructor(x, y, radius, color, type, points = 0) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+                this.type = type; 
+                this.points = points;
+                this.vx = 0;
+                this.vy = 0;
+                this.isPocketed = false;
+            }
+
+            draw() {
+                if (this.isPocketed) return;
+                
+                ctx.save();
+                // Outer Shadow/Border for 3D look
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetY = 2;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetY = 0;
+
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#1e120a';
+                ctx.stroke();
+
+                // Detailed concentric rings for authentic coins
+                if(this.type !== 'striker') {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius * 0.6, 0, Math.PI * 2);
+                    ctx.strokeStyle = this.color === '#fff' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)';
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color === '#fff' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)';
+                    ctx.fill();
+                } else {
+                    // Unique Striker Design pattern
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius * 0.7, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius * 0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            update() {
+                if (this.isPocketed) return;
+                
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= FRICTION;
+                this.vy *= FRICTION;
+
+                // Stop completely if moving extremely slow
+                if (Math.abs(this.vx) < 0.08) this.vx = 0;
+                if (Math.abs(this.vy) < 0.08) this.vy = 0;
+
+                // Secure Wall Collisions (Includes anti-stuck clipping fix)
+                if (this.x - this.radius < 0) { this.x = this.radius; this.vx *= -1; }
+                if (this.x + this.radius > BOARD_SIZE) { this.x = BOARD_SIZE - this.radius; this.vx *= -1; }
+                if (this.y - this.radius < 0) { this.y = this.radius; this.vy *= -1; }
+                if (this.y + this.radius > BOARD_SIZE) { this.y = BOARD_SIZE - this.radius; this.vy *= -1; }
+            }
+        }
+
+        let entities = [];
+        let striker = null;
+
+        function initGame() {
+            entities = [];
+            // Spawn Center Red Queen
+            entities.push(new Entity(BOARD_SIZE / 2, BOARD_SIZE / 2, COIN_RADIUS, '#d63031', 'red', 50));
+
+            // Classical Carrom Cluster Arrangement
+            const layers = [
+                { count: 6, radius: 26 },
+                { count: 12, radius: 50 }
+            ];
+
+            let index = 0;
+            layers.forEach((layer, layerIdx) => {
+                for (let i = 0; i < layer.count; i++) {
+                    let angle = (i * Math.PI * 2) / layer.count + (layerIdx * 0.5);
+                    let cx = BOARD_SIZE / 2 + Math.cos(angle) * layer.radius;
+                    let cy = BOARD_SIZE / 2 + Math.sin(angle) * layer.radius;
+                    
+                    // Alternate white and black colors perfectly
+                    let color = (index % 2 === 0) ? '#fff' : '#2d3436';
+                    let type = (index % 2 === 0) ? 'white' : 'black';
+                    let points = (index % 2 === 0) ? 20 : 10;
+                    
+                    entities.push(new Entity(cx, cy, COIN_RADIUS, color, type, points));
+                    index++;
+                }
+            });
+
+            resetStriker('player');
+        }
+
+        function resetStriker(turn) {
+            let yPos = turn === 'player' ? BOARD_SIZE - 95 : 95;
+            striker = new Entity(BOARD_SIZE / 2, yPos, STRIKER_RADIUS, '#0984e3', 'striker');
+            strikerSlider.value = BOARD_SIZE / 2;
+            strikerSlider.disabled = (turn !== 'player');
+        }
+
+        function checkCollisions() {
+            let all = [striker, ...entities.filter(e => !e.isPocketed)];
+
+            for (let i = 0; i < all.length; i++) {
+                for (let j = i + 1; j < all.length; j++) {
+                    let e1 = all[i];
+                    let e2 = all[j];
+
+                    let dx = e2.x - e1.x;
+                    let dy = e2.y - e1.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    let minDist = e1.radius + e2.radius;
+
+                    if (dist < minDist) {
+                        // Anti-stuck patch: resolve overlapping position directly before velocity math
+                        let overlap = minDist - dist;
+                        let nx = dx / (dist || 1);
+                        let ny = dy / (dist || 1);
+
+                        e1.x -= nx * (overlap * 0.5);
+                        e1.y -= ny * (overlap * 0.5);
+                        e2.x += nx * (overlap * 0.5);
+                        e2.y += ny * (overlap * 0.5);
+
+                        // Elastic dynamic impact vectors
+                        let kx = e1.vx - e2.vx;
+                        let ky = e1.vy - e2.vy;
+                        let p = 2 * (nx * kx + ny * ky) / 2; 
+
+                        e1.vx -= p * nx;
+                        e1.vy -= p * ny;
+                        e2.vx += p * nx;
+                        e2.vy += p * ny;
+                    }
+                }
+            }
+        }
+
+        function checkPockets() {
+            entities.forEach(coin => {
+                if (coin.isPocketed) return;
+                pockets.forEach(p => {
+                    let dist = Math.sqrt((coin.x - p.x)**2 + (coin.y - p.y)**2);
+                    if (dist < POCKET_RADIUS) {
+                        coin.isPocketed = true;
+                        coin.vx = 0; coin.vy = 0;
+                        scores[currentTurn] += coin.points;
+                        coinScoredThisTurn = true;
+                        updateScoreboard();
+                        setTimeout(checkWinCondition, 100);
+                    }
+                });
+            });
+
+            // Striker Foul reset rule
+            pockets.forEach(p => {
+                let dist = Math.sqrt((striker.x - p.x)**2 + (striker.y - p.y)**2);
+                if (dist < POCKET_RADIUS) {
+                    striker.vx = 0; striker.vy = 0;
+                    // Move it safely away so it doesn't loop fire foul triggers
+                    striker.x = -999; 
+                    msgDiv.innerText = "Foul! Striker sunk.";
+                }
+            });
+        }
+
+        function updateScoreboard() {
+            document.getElementById('user-score').innerText = scores.player;
+            document.getElementById('robot-score').innerText = scores.robot;
+        }
+
+        function checkWinCondition() {
+            if (scores.player >= WINNING_SCORE) {
+                alert("🏆 Awesome! You won Carrom Mania!");
+                resetGameComplete();
+            } else if (scores.robot >= WINNING_SCORE) {
+                alert("🤖 Robot won! Practice more!");
+                resetGameComplete();
+            }
+        }
+
+        function resetGameComplete() {
+            scores = { player: 0, robot: 0 };
+            updateScoreboard();
+            initGame();
+        }
+
+        function endTurn() {
+            isMoving = false;
+            
+            // Loop dynamic turn rule checker
+            if (!coinScoredThisTurn) {
+                currentTurn = currentTurn === 'player' ? 'robot' : 'player';
+            }
+            
+            coinScoredThisTurn = false; 
+            
+            document.getElementById('user-box').className = currentTurn === 'player' ? 'player-score active-turn' : 'player-score';
+            document.getElementById('robot-box').className = currentTurn === 'robot' ? 'player-score active-turn' : 'player-score';
+
+            resetStriker(currentTurn);
+
+            if (currentTurn === 'robot') {
+                msgDiv.innerText = "Robot is targeting a coin...";
+                setTimeout(robotPlay, 1200);
+            } else {
+                msgDiv.innerText = "Your Turn! Drag back from the striker and release to shoot.";
+            }
+        }
+
+        function robotPlay() {
+            if (scores.robot >= WINNING_SCORE || scores.player >= WINNING_SCORE) return;
+
+            let activeCoins = entities.filter(e => !e.isPocketed);
+            if (activeCoins.length === 0) { initGame(); return; }
+
+            // Target selection logic
+            let target = activeCoins[Math.floor(Math.random() * activeCoins.length)];
+            
+            // Place striker on robot's baseline bar randomly
+            striker.x = 120 + Math.random() * (BOARD_SIZE - 240);
+
+            setTimeout(() => {
+                let dx = target.x - striker.x;
+                let dy = target.y - striker.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+
+                let botPower = 16 + Math.random() * 8;
+                striker.vx = (dx / (distance || 1)) * botPower;
+                striker.vy = (dy / (distance || 1)) * botPower;
+                isMoving = true;
+            }, 600);
+        }
+
+        // Controls input listeners
+        let mouseX = 0, mouseY = 0;
+        
+        strikerSlider.addEventListener('input', (e) => {
+            if (currentTurn === 'player' && !isMoving) {
+                striker.x = parseInt(e.target.value);
+            }
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (currentTurn !== 'player' || isMoving) return;
+            let rect = canvas.getBoundingClientRect();
+            let mX = e.clientX - rect.left;
+            let mY = e.clientY - rect.top;
+
+            if (Math.sqrt((mX - striker.x)**2 + (mY - striker.y)**2) < STRIKER_RADIUS + 25) {
+                isAiming = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            let rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isAiming) {
+                isAiming = false;
+                let dx = striker.x - mouseX;
+                let dy = striker.y - mouseY;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 12) {
+                    let force = Math.min(dist * 0.16, 24); 
+                    striker.vx = (dx / dist) * force;
+                    striker.vy = (dy / dist) * force;
+                    isMoving = true;
+                    strikerSlider.disabled = true;
+                }
+            }
+        });
+
+        // Elegant Original Wooden Board Art Renderer
+        function drawOriginalBoard() {
+            ctx.save();
+            
+            // Outer Frame wood shading effect
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(4, 4, BOARD_SIZE-8, BOARD_SIZE-8);
+
+            // Fine Traditional Pattern Lines (Baselines)
+            ctx.strokeStyle = "#a27d56";
+            ctx.lineWidth = 2;
+
+            // 4 Corner baseline layouts
+            // Bottom Bar
+            ctx.strokeRect(90, BOARD_SIZE - 105, BOARD_SIZE - 180, 15);
+            ctx.beginPath(); ctx.arc(90, BOARD_SIZE - 97.5, 7.5, 0, Math.PI*2); ctx.fillStyle="#a27d56"; ctx.fill();
+            ctx.beginPath(); ctx.arc(BOARD_SIZE - 90, BOARD_SIZE - 97.5, 7.5, 0, Math.PI*2); ctx.fill();
+
+            // Top Bar
+            ctx.strokeRect(90, 90, BOARD_SIZE - 180, 15);
+            ctx.beginPath(); ctx.arc(90, 97.5, 7.5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(BOARD_SIZE - 90, 97.5, 7.5, 0, Math.PI*2); ctx.fill();
+
+            // Left Bar
+            ctx.strokeRect(90, 90, 15, BOARD_SIZE - 180);
+            
+            // Right Bar
+            ctx.strokeRect(BOARD_SIZE - 105, 90, 15, BOARD_SIZE - 180);
+
+            // Diagonal corner target lines
+            ctx.lineWidth = 1.5;
+            const corners = [
+                {x1: 40, y1: 40, x2: 150, y2: 150},
+                {x1: BOARD_SIZE-40, y1: 40, x2: BOARD_SIZE-150, y2: 150},
+                {x1: 40, y1: BOARD_SIZE-40, x2: 150, y2: BOARD_SIZE-150},
+                {x1: BOARD_SIZE-40, y1: BOARD_SIZE-40, x2: BOARD_SIZE-150, y2: BOARD_SIZE-150}
+            ];
+            corners.forEach(c => {
+                ctx.beginPath();
+                ctx.moveTo(c.x1, c.y1);
+                ctx.lineTo(c.x2, c.y2);
+                ctx.stroke();
+            });
+
+            // Beautiful Concentric Center Pattern Rose Circle
+            ctx.beginPath();
+            ctx.arc(BOARD_SIZE/2, BOARD_SIZE/2, 65, 0, Math.PI * 2);
+            ctx.strokeStyle = "#a27d56";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(BOARD_SIZE/2, BOARD_SIZE/2, 60, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(162, 125, 86, 0.4)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(BOARD_SIZE/2, BOARD_SIZE/2, 15, 0, Math.PI * 2);
+            ctx.strokeStyle = "#d63031";
+            ctx.stroke();
+
+            // Pocket Backgrounds
+            pockets.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, POCKET_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = "#111";
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "#3a2211";
+                ctx.stroke();
+            });
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, BOARD_SIZE, BOARD_SIZE);
+            
+            drawOriginalBoard();
+
+            // Physics Update and Drawing frames
+            striker.update();
+            striker.draw();
+
+            entities.forEach(coin => {
+                coin.update();
+                coin.draw();
+            });
+
+            if (isMoving) {
+                checkCollisions();
+                checkPockets();
+
+                // Wait until every piece rests perfectly
+                let hardwareMoving = Math.abs(striker.vx) > 0 || Math.abs(striker.vy) > 0 ||
+                    entities.some(c => Math.abs(c.vx) > 0 || Math.abs(c.vy) > 0);
+
+                if (!hardwareMoving) {
+                    endTurn();
+                }
+            }
+
+            // Interactive vector aim line
+            if (isAiming) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(striker.x, striker.y);
+                ctx.lineTo(mouseX, mouseY);
+                ctx.strokeStyle = "#d35400";
+                ctx.lineWidth = 3;
+                ctx.setLineDash([6, 4]);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize setup
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>
