@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Carrom Mania Premium</title>
     <style>
         body {
@@ -16,32 +16,34 @@
             margin: 0;
             min-height: 100vh;
             user-select: none;
-            -webkit-user-select: none;
-            overflow-x: hidden;
+            touch-action: manipulation;
+            padding: 10px;
+            box-sizing: border-box;
         }
 
         h1 {
-            margin: 10px 0 5px 0;
+            margin: 5px 0;
             color: #f1c40f;
             text-shadow: 2px 2px 5px rgba(0,0,0,0.7);
             letter-spacing: 2px;
-            font-size: 2rem;
+            font-size: 1.8rem;
+            text-align: center;
         }
 
         #scoreboard {
             display: flex;
             gap: 20px;
-            font-size: 1.1rem;
-            margin-bottom: 15px;
+            font-size: 1rem;
+            margin-bottom: 12px;
             background: #2f3640;
-            padding: 10px 20px;
+            padding: 8px 20px;
             border-radius: 30px;
             box-shadow: 0 6px 15px rgba(0,0,0,0.4);
             border: 2px solid #444;
         }
 
         .player-score {
-            padding: 5px 12px;
+            padding: 4px 12px;
             border-radius: 20px;
             transition: all 0.3s ease;
         }
@@ -60,7 +62,7 @@
             border-radius: 10px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.7);
             border: 4px solid #1e120a;
-            max-width: 92vw;
+            max-width: 100%;
             box-sizing: border-box;
         }
 
@@ -68,48 +70,104 @@
             background: #f3d4a2; 
             display: block;
             cursor: crosshair;
-            border: 20px solid #4a2c11; 
+            border: 24px solid #4a2c11; 
             border-radius: 2px;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
             max-width: 100%;
             height: auto;
             box-sizing: border-box;
-            touch-action: none; /* Prevents mobile gesture interference */
         }
 
         #controls {
-            margin-top: 15px;
+            margin-top: 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             width: 100%;
-            max-width: 600px;
-            padding: 0 15px;
-            box-sizing: border-box;
+            max-width: 500px;
         }
 
         .slider-container {
             display: flex;
             align-items: center;
-            gap: 15px;
-            width: 100%;
+            gap: 12px;
+            width: 90%;
         }
 
         input[type=range] {
             flex-grow: 1;
             accent-color: #d35400;
             cursor: pointer;
-            height: 10px;
+            height: 25px;
         }
 
         #msg {
-            font-size: 1rem;
-            font-weight: 500;
-            color: #e1b12c;
-            height: 40px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: #f1c40f;
+            height: 20px;
             text-align: center;
             padding: 0 10px;
+        }
+
+        /* Win Modal Styles */
+        #win-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .win-box {
+            background: linear-gradient(145deg, #2f3640, #1a1a24);
+            padding: 40px;
+            border-radius: 15px;
+            border: 3px solid #f1c40f;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(241, 196, 15, 0.3);
+        }
+
+        .win-title {
+            font-size: 2.5rem;
+            color: #f1c40f;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .win-score {
+            font-size: 1.2rem;
+            color: #dcdde1;
+            margin-bottom: 25px;
+        }
+
+        .play-again-btn {
+            background: #d35400;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+
+        .play-again-btn:hover {
+            background: #e67e22;
+            transform: scale(1.05);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
@@ -128,10 +186,19 @@
 
     <div id="controls">
         <div class="slider-container">
-            <span style="font-size: 0.9rem; color: #aaa; white-space: nowrap;">Position Striker:</span>
-            <input type="range" id="strikerX" min="95" max="505" value="300">
+            <span style="font-size: 0.85rem; color: #aaa; white-space: nowrap;">Position Striker:</span>
+            <input type="range" id="strikerX" min="115" max="485" value="300">
         </div>
-        <div id="msg">Your Turn! Drag back from the striker and release to shoot.</div>
+        <div id="msg">Your Turn! Drag back to aim and shoot.</div>
+    </div>
+
+    <!-- Win Modal Popup -->
+    <div id="win-overlay">
+        <div class="win-box">
+            <div class="win-title" id="win-title-text">You Win!</div>
+            <div class="win-score" id="win-score-text">Final Score: 160 - 120</div>
+            <button class="play-again-btn" onclick="resetGameComplete()">Play Again</button>
+        </div>
     </div>
 
     <script>
@@ -139,6 +206,7 @@
         const ctx = canvas.getContext('2d');
         const strikerSlider = document.getElementById('strikerX');
         const msgDiv = document.getElementById('msg');
+        const winOverlay = document.getElementById('win-overlay');
 
         // Game Settings
         const WINNING_SCORE = 160;
@@ -148,15 +216,23 @@
         const COIN_RADIUS = 12.5;
         const STRIKER_RADIUS = 17.5;
 
+        // Game State Variables
         let scores = { player: 0, robot: 0 };
+        let pocketedCoinsStack = { player: [], robot: [] }; 
         let currentTurn = 'player'; 
         let isAiming = false;
         let isMoving = false;
+        
+        // Turn-by-Turn trackers
         let coinScoredThisTurn = false;
+        let foulCommittedThisTurn = false;
+        let normalCoinPocketedThisTurn = false;
+        let queenJustPocketed = false;
 
-        let mouseX = 0, mouseY = 0;
+        // Queen Mechanics Status
+        let queenState = 'board'; // 'board', 'pending', 'covered'
+        let queenEntity = null;
 
-        // Realistic Pocket positions offset from edges
         const pockets = [
             { x: 30, y: 30 },
             { x: BOARD_SIZE - 30, y: 30 },
@@ -242,8 +318,14 @@
         let striker = null;
 
         function initGame() {
+            winOverlay.style.display = 'none';
             entities = [];
-            entities.push(new Entity(BOARD_SIZE / 2, BOARD_SIZE / 2, COIN_RADIUS, '#d63031', 'red', 50));
+            pocketedCoinsStack = { player: [], robot: [] };
+            queenState = 'board';
+            
+            // Queen
+            queenEntity = new Entity(BOARD_SIZE / 2, BOARD_SIZE / 2, COIN_RADIUS, '#d63031', 'red', 50);
+            entities.push(queenEntity);
 
             const layers = [
                 { count: 6, radius: 26 },
@@ -313,6 +395,7 @@
         }
 
         function checkPockets() {
+            // Check Coins
             entities.forEach(coin => {
                 if (coin.isPocketed) return;
                 pockets.forEach(p => {
@@ -320,20 +403,43 @@
                     if (dist < POCKET_RADIUS) {
                         coin.isPocketed = true;
                         coin.vx = 0; coin.vy = 0;
-                        scores[currentTurn] += coin.points;
                         coinScoredThisTurn = true;
+                        
+                        if (coin.type === 'red') {
+                            queenJustPocketed = true;
+                        } else {
+                            normalCoinPocketedThisTurn = true;
+                            scores[currentTurn] += coin.points;
+                            pocketedCoinsStack[currentTurn].push(coin);
+                        }
                         updateScoreboard();
-                        setTimeout(checkWinCondition, 100);
                     }
                 });
             });
 
+            // Check Striker Foul
             pockets.forEach(p => {
                 let dist = Math.sqrt((striker.x - p.x)**2 + (striker.y - p.y)**2);
-                if (dist < POCKET_RADIUS) {
+                if (dist < POCKET_RADIUS && striker.x !== -999) {
                     striker.vx = 0; striker.vy = 0;
                     striker.x = -999; 
-                    msgDiv.innerText = "Foul! Striker sunk.";
+                    
+                    foulCommittedThisTurn = true;
+                    coinScoredThisTurn = false; // Foul cancels any turn extension
+                    
+                    let foulMsg = "Foul! Striker Sunk.";
+                    
+                    if (pocketedCoinsStack[currentTurn].length > 0) {
+                        let penaltyCoin = pocketedCoinsStack[currentTurn].pop();
+                        scores[currentTurn] -= penaltyCoin.points;
+                        penaltyCoin.isPocketed = false;
+                        penaltyCoin.x = BOARD_SIZE / 2;
+                        penaltyCoin.y = BOARD_SIZE / 2;
+                        foulMsg += " Penalty: 1 coin returned.";
+                    }
+                    
+                    msgDiv.innerText = foulMsg;
+                    updateScoreboard();
                 }
             });
         }
@@ -343,13 +449,169 @@
             document.getElementById('robot-score').innerText = scores.robot;
         }
 
-        function checkWinCondition() {
-            if (scores.player >= WINNING_SCORE) {
-                alert("🏆 Awesome! You won Carrom Mania!");
-                resetGameComplete();
-            } else if (scores.robot >= WINNING_SCORE) {
-                alert("🤖 Robot won! Practice more!");
-                resetGameComplete();
+        function triggerWin(winner) {
+            document.getElementById('win-title-text').innerText = winner === 'player' ? '🏆 You Win!' : '🤖 Robot Wins!';
+            document.getElementById('win-score-text').innerText = `Final Score | Player: ${scores.player} - Robot: ${scores.robot}`;
+            winOverlay.style.display = 'flex';
+        }
+
+        function endTurn() {
+            isMoving = false;
+            let displayMessage = "";
+
+            // --- QUEEN COVER LOGIC ---
+            if (queenState === 'pending') {
+                if (normalCoinPocketedThisTurn && !foulCommittedThisTurn) {
+                    queenState = 'covered';
+                    scores[currentTurn] += queenEntity.points;
+                    displayMessage = "Queen Covered! (+50 pts) ";
+                } else {
+                    queenState = 'board';
+                    queenEntity.isPocketed = false;
+                    queenEntity.x = BOARD_SIZE / 2;
+                    queenEntity.y = BOARD_SIZE / 2;
+                    displayMessage = "Cover Failed! Queen returned. ";
+                }
+            } else if (queenJustPocketed && !foulCommittedThisTurn) {
+                if (normalCoinPocketedThisTurn) {
+                    queenState = 'covered';
+                    scores[currentTurn] += queenEntity.points;
+                    displayMessage = "Queen & Cover Pocketed! (+50 pts) ";
+                } else {
+                    queenState = 'pending';
+                    displayMessage = "Queen Pocketed! You MUST sink a coin now to cover it. ";
+                    coinScoredThisTurn = true; // Force extra turn
+                }
+            }
+
+            // Check for Win or Empty Board
+            let activeCoins = entities.filter(e => !e.isPocketed && e.type !== 'striker');
+            if (scores.player >= WINNING_SCORE || activeCoins.length === 0 && scores.player > scores.robot) {
+                setTimeout(() => triggerWin('player'), 500);
+                return;
+            } else if (scores.robot >= WINNING_SCORE || activeCoins.length === 0 && scores.robot > scores.player) {
+                setTimeout(() => triggerWin('robot'), 500);
+                return;
+            }
+
+            // Turn Switching
+            if (!coinScoredThisTurn || foulCommittedThisTurn) {
+                currentTurn = currentTurn === 'player' ? 'robot' : 'player';
+            }
+            
+            // Reset trackers for next turn
+            coinScoredThisTurn = false;
+            foulCommittedThisTurn = false;
+            normalCoinPocketedThisTurn = false;
+            queenJustPocketed = false;
+            updateScoreboard();
+            
+            document.getElementById('user-box').className = currentTurn === 'player' ? 'player-score active-turn' : 'player-score';
+            document.getElementById('robot-box').className = currentTurn === 'robot' ? 'player-score active-turn' : 'player-score';
+
+            resetStriker(currentTurn);
+
+            if (currentTurn === 'robot') {
+                msgDiv.innerText = displayMessage + "Robot is calculating shots...";
+                setTimeout(robotPlay, 1200);
+            } else {
+                msgDiv.innerText = displayMessage || "Your Turn! Drag back to aim and shoot.";
+            }
+        }
+
+        // Math Helper for Raycasting
+        function distPointToSegment(px, py, x1, y1, x2, y2) {
+            let l2 = (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2);
+            if (l2 == 0) return Math.sqrt((px-x1)*(px-x1) + (py-y1)*(py-y1));
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.sqrt((px - (x1 + t * (x2 - x1)))**2 + (py - (y1 + t * (y2 - y1)))**2);
+        }
+
+        function robotPlay() {
+            if (scores.robot >= WINNING_SCORE || scores.player >= WINNING_SCORE) return;
+            let activeCoins = entities.filter(e => !e.isPocketed && e.type !== 'striker');
+            
+            // Sort to prioritize highest point coins (and Queen!)
+            activeCoins.sort((a, b) => b.points - a.points);
+            
+            let bestShotFound = false;
+
+            // SMART AI: Look for a direct line-of-sight shot
+            for (let coin of activeCoins) {
+                // Robot prefers shooting down to bottom pockets
+                let targetPockets = [pockets[2], pockets[3]]; 
+                
+                for (let pocket of targetPockets) {
+                    let dx = coin.x - pocket.x;
+                    let dy = coin.y - pocket.y;
+                    
+                    if (Math.abs(dy) < 0.1) continue;
+
+                    // Compute exactly where on the Y=95 baseline the striker needs to be to make a straight shot
+                    let requiredStartX = coin.x + (95 - coin.y) * (dx / dy);
+
+                    // Check if required placement is within valid baseline range
+                    if (requiredStartX >= 120 && requiredStartX <= 480) {
+                        
+                        let distTarget = Math.sqrt(dx*dx + dy*dy);
+                        // Strike point on the coin
+                        let strikeX = coin.x + (dx/distTarget) * (COIN_RADIUS + STRIKER_RADIUS);
+                        let strikeY = coin.y + (dy/distTarget) * (COIN_RADIUS + STRIKER_RADIUS);
+
+                        // Is the path clear of other coins?
+                        let pathClear = true;
+                        for (let obstacle of activeCoins) {
+                            if (obstacle === coin) continue;
+                            let distToLine = distPointToSegment(obstacle.x, obstacle.y, requiredStartX, 95, strikeX, strikeY);
+                            if (distToLine < COIN_RADIUS + STRIKER_RADIUS + 2) {
+                                pathClear = false;
+                                break;
+                            }
+                        }
+
+                        if (pathClear) {
+                            // Perfect shot found!
+                            striker.x = requiredStartX;
+                            
+                            // Add slight jitter so robot isn't mathematically perfect 100% of the time
+                            let aimErrorX = (Math.random() - 0.5) * 1.5; 
+                            let aimErrorY = (Math.random() - 0.5) * 1.5;
+
+                            setTimeout(() => {
+                                let aimDx = (strikeX + aimErrorX) - striker.x;
+                                let aimDy = (strikeY + aimErrorY) - striker.y;
+                                let aimDist = Math.sqrt(aimDx*aimDx + aimDy*aimDy);
+                                
+                                let botPower = 18 + Math.random() * 4; // Firm strike
+                                striker.vx = (aimDx / aimDist) * botPower;
+                                striker.vy = (aimDy / aimDist) * botPower;
+                                isMoving = true;
+                            }, 800);
+                            
+                            bestShotFound = true;
+                            break;
+                        }
+                    }
+                }
+                if (bestShotFound) break;
+            }
+
+            // FALLBACK AI: If no clean straight shot, just hit a random coin hard
+            if (!bestShotFound) {
+                let target = activeCoins[Math.floor(Math.random() * activeCoins.length)];
+                striker.x = 120 + Math.random() * (BOARD_SIZE - 240);
+
+                setTimeout(() => {
+                    let dx = target.x - striker.x;
+                    let dy = target.y - striker.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+
+                    let botPower = 18 + Math.random() * 6;
+                    striker.vx = (dx / (distance || 1)) * botPower;
+                    striker.vy = (dy / (distance || 1)) * botPower;
+                    isMoving = true;
+                }, 800);
             }
         }
 
@@ -359,86 +621,54 @@
             initGame();
         }
 
-        function endTurn() {
-            isMoving = false;
-            
-            if (!coinScoredThisTurn) {
-                currentTurn = currentTurn === 'player' ? 'robot' : 'player';
-            }
-            
-            coinScoredThisTurn = false; 
-            
-            document.getElementById('user-box').className = currentTurn === 'player' ? 'player-score active-turn' : 'player-score';
-            document.getElementById('robot-box').className = currentTurn === 'robot' ? 'player-score active-turn' : 'player-score';
+        // User Controls logic
+        let mouseX = 0, mouseY = 0;
 
-            resetStriker(currentTurn);
-
-            if (currentTurn === 'robot') {
-                msgDiv.innerText = "Robot is targeting a coin...";
-                setTimeout(robotPlay, 1200);
-            } else {
-                msgDiv.innerText = "Your Turn! Drag back from the striker and release to shoot.";
-            }
-        }
-
-        function robotPlay() {
-            if (scores.robot >= WINNING_SCORE || scores.player >= WINNING_SCORE) return;
-
-            let activeCoins = entities.filter(e => !e.isPocketed);
-            if (activeCoins.length === 0) { initGame(); return; }
-
-            let target = activeCoins[Math.floor(Math.random() * activeCoins.length)];
-            striker.x = 120 + Math.random() * (BOARD_SIZE - 240);
-
-            setTimeout(() => {
-                let dx = target.x - striker.x;
-                let dy = target.y - striker.y;
-                let distance = Math.sqrt(dx * dx + dy * dy);
-
-                let botPower = 16 + Math.random() * 8;
-                striker.vx = (dx / (distance || 1)) * botPower;
-                striker.vy = (dy / (distance || 1)) * botPower;
-                isMoving = true;
-            }, 600);
-        }
-
-        // Integrated Input Coordinates Extractor (Handles PC & Responsive Mobile Bounds)
-        function getCanvasCoords(e) {
+        function getCanvasCoordinates(e) {
             let rect = canvas.getBoundingClientRect();
-            let clientX, clientY;
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
             
-            if (e.touches && e.touches.length > 0) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-
-            return {
-                x: (clientX - rect.left) * (BOARD_SIZE / rect.width),
-                y: (clientY - rect.top) * (BOARD_SIZE / rect.height)
-            };
+            let style = window.getComputedStyle(canvas);
+            let borderLeft = parseFloat(style.borderLeftWidth) || 0;
+            let borderTop = parseFloat(style.borderTopWidth) || 0;
+            let displayW = rect.width - borderLeft - (parseFloat(style.borderRightWidth) || 0);
+            let displayH = rect.height - borderTop - (parseFloat(style.borderBottomWidth) || 0);
+            
+            let x = (clientX - rect.left - borderLeft) * (canvas.width / displayW);
+            let y = (clientY - rect.top - borderTop) * (canvas.height / displayH);
+            return { x, y };
         }
 
-        function handleStart(coords) {
+        strikerSlider.addEventListener('input', (e) => {
+            if (currentTurn === 'player' && !isMoving) {
+                striker.x = parseInt(e.target.value);
+            }
+        });
+
+        function onAimStart(e) {
             if (currentTurn !== 'player' || isMoving) return;
-            // Target zone expanded slightly (+40) for touch devices
-            if (Math.sqrt((coords.x - striker.x)**2 + (coords.y - striker.y)**2) < STRIKER_RADIUS + 40) {
+            if (e.cancelable) e.preventDefault();
+
+            let coords = getCanvasCoordinates(e);
+            let interactionRadius = STRIKER_RADIUS + 35; 
+            if (Math.sqrt((coords.x - striker.x)**2 + (coords.y - striker.y)**2) < interactionRadius) {
                 isAiming = true;
                 mouseX = coords.x;
                 mouseY = coords.y;
             }
         }
 
-        function handleMove(coords) {
-            if (isAiming) {
-                mouseX = coords.x;
-                mouseY = coords.y;
-            }
+        function onAimMove(e) {
+            if (!isAiming) return;
+            if (e.cancelable) e.preventDefault();
+            
+            let coords = getCanvasCoordinates(e);
+            mouseX = coords.x;
+            mouseY = coords.y;
         }
 
-        function handleEnd() {
+        function onAimEnd() {
             if (isAiming) {
                 isAiming = false;
                 let dx = striker.x - mouseX;
@@ -455,32 +685,14 @@
             }
         }
 
-        // Slider Control
-        strikerSlider.addEventListener('input', (e) => {
-            if (currentTurn === 'player' && !isMoving) {
-                striker.x = parseInt(e.target.value);
-            }
-        });
+        canvas.addEventListener('mousedown', onAimStart);
+        canvas.addEventListener('mousemove', onAimMove);
+        window.addEventListener('mouseup', onAimEnd);
 
-        // Mouse Event Handlers
-        canvas.addEventListener('mousedown', (e) => handleStart(getCanvasCoords(e)));
-        canvas.addEventListener('mousemove', (e) => handleMove(getCanvasCoords(e)));
-        window.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('touchstart', onAimStart, { passive: false });
+        canvas.addEventListener('touchmove', onAimMove, { passive: false });
+        window.addEventListener('touchend', onAimEnd);
 
-        // Mobile Touch Event Handlers
-        canvas.addEventListener('touchstart', (e) => {
-            handleStart(getCanvasCoords(e));
-            if (isAiming) e.preventDefault();
-        }, { passive: false });
-
-        canvas.addEventListener('touchmove', (e) => {
-            handleMove(getCanvasCoords(e));
-            if (isAiming) e.preventDefault();
-        }, { passive: false });
-
-        window.addEventListener('touchend', handleEnd);
-
-        // Elegant Original Wooden Board Art Renderer
         function drawOriginalBoard() {
             ctx.save();
             ctx.strokeStyle = 'rgba(0,0,0,0.1)';
@@ -527,10 +739,13 @@
             ctx.lineWidth = 1;
             ctx.stroke();
 
-            ctx.beginPath();
-            ctx.arc(BOARD_SIZE/2, BOARD_SIZE/2, 15, 0, Math.PI * 2);
-            ctx.strokeStyle = "#d63031";
-            ctx.stroke();
+            // Highlight Center Red if Queen is on board
+            if (queenState === 'board') {
+                ctx.beginPath();
+                ctx.arc(BOARD_SIZE/2, BOARD_SIZE/2, 15, 0, Math.PI * 2);
+                ctx.strokeStyle = "#d63031";
+                ctx.stroke();
+            }
 
             pockets.forEach(p => {
                 ctx.beginPath();
@@ -547,7 +762,6 @@
 
         function gameLoop() {
             ctx.clearRect(0, 0, BOARD_SIZE, BOARD_SIZE);
-            
             drawOriginalBoard();
 
             striker.update();
@@ -571,15 +785,39 @@
             }
 
             if (isAiming) {
-                ctx.save();
-                ctx.beginPath();
-                ctx.moveTo(striker.x, striker.y);
-                ctx.lineTo(mouseX, mouseY);
-                ctx.strokeStyle = "#d35400";
-                ctx.lineWidth = 3;
-                ctx.setLineDash([6, 4]);
-                ctx.stroke();
-                ctx.restore();
+                let dx = striker.x - mouseX;
+                let dy = striker.y - mouseY;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 5) { 
+                    let aimLength = 500; 
+                    let aimX = striker.x + (dx / dist) * aimLength;
+                    let aimY = striker.y + (dy / dist) * aimLength;
+
+                    ctx.save();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(striker.x, striker.y);
+                    ctx.lineTo(aimX, aimY);
+                    ctx.strokeStyle = "rgba(241, 196, 15, 0.7)";
+                    ctx.lineWidth = 2.5;
+                    ctx.setLineDash([10, 8]);
+                    ctx.stroke();
+                    
+                    let powerFactor = Math.min(dist * 0.16, 24);
+                    let powerDist = powerFactor * 12; 
+                    let ghostX = striker.x + (dx / dist) * powerDist;
+                    let ghostY = striker.y + (dy / dist) * powerDist;
+                    
+                    ctx.beginPath();
+                    ctx.arc(ghostX, ghostY, STRIKER_RADIUS, 0, Math.PI * 2);
+                    ctx.strokeStyle = "rgba(241, 196, 15, 0.4)";
+                    ctx.setLineDash([]); 
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.restore();
+                }
             }
 
             requestAnimationFrame(gameLoop);
