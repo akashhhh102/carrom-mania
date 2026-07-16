@@ -16,6 +16,8 @@
             margin: 0;
             min-height: 100vh;
             user-select: none;
+            -webkit-user-select: none;
+            overflow-x: hidden;
         }
 
         h1 {
@@ -23,23 +25,23 @@
             color: #f1c40f;
             text-shadow: 2px 2px 5px rgba(0,0,0,0.7);
             letter-spacing: 2px;
-            font-size: 2.2rem;
+            font-size: 2rem;
         }
 
         #scoreboard {
             display: flex;
-            gap: 30px;
-            font-size: 1.2rem;
+            gap: 20px;
+            font-size: 1.1rem;
             margin-bottom: 15px;
             background: #2f3640;
-            padding: 12px 25px;
+            padding: 10px 20px;
             border-radius: 30px;
             box-shadow: 0 6px 15px rgba(0,0,0,0.4);
             border: 2px solid #444;
         }
 
         .player-score {
-            padding: 5px 15px;
+            padding: 5px 12px;
             border-radius: 20px;
             transition: all 0.3s ease;
         }
@@ -53,20 +55,26 @@
 
         #game-container {
             position: relative;
-            background: #2c1d11; /* Outer frame background shadow */
-            padding: 24px;
+            background: #2c1d11; 
+            padding: 12px;
             border-radius: 10px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.7);
             border: 4px solid #1e120a;
+            max-width: 92vw;
+            box-sizing: border-box;
         }
 
         canvas {
-            background: #f3d4a2; /* Classic light carrom plywood color */
+            background: #f3d4a2; 
             display: block;
             cursor: crosshair;
-            border: 28px solid #4a2c11; /* Gorgeous thick wooden frame border */
+            border: 20px solid #4a2c11; 
             border-radius: 2px;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+            max-width: 100%;
+            height: auto;
+            box-sizing: border-box;
+            touch-action: none; /* Prevents mobile gesture interference */
         }
 
         #controls {
@@ -77,27 +85,31 @@
             gap: 10px;
             width: 100%;
             max-width: 600px;
+            padding: 0 15px;
+            box-sizing: border-box;
         }
 
         .slider-container {
             display: flex;
             align-items: center;
             gap: 15px;
-            width: 80%;
+            width: 100%;
         }
 
         input[type=range] {
             flex-grow: 1;
             accent-color: #d35400;
             cursor: pointer;
+            height: 10px;
         }
 
         #msg {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 500;
             color: #e1b12c;
-            height: 25px;
+            height: 40px;
             text-align: center;
+            padding: 0 10px;
         }
     </style>
 </head>
@@ -116,7 +128,7 @@
 
     <div id="controls">
         <div class="slider-container">
-            <span style="font-size: 0.9rem; color: #aaa;">Position Striker:</span>
+            <span style="font-size: 0.9rem; color: #aaa; white-space: nowrap;">Position Striker:</span>
             <input type="range" id="strikerX" min="95" max="505" value="300">
         </div>
         <div id="msg">Your Turn! Drag back from the striker and release to shoot.</div>
@@ -141,6 +153,8 @@
         let isAiming = false;
         let isMoving = false;
         let coinScoredThisTurn = false;
+
+        let mouseX = 0, mouseY = 0;
 
         // Realistic Pocket positions offset from edges
         const pockets = [
@@ -167,7 +181,6 @@
                 if (this.isPocketed) return;
                 
                 ctx.save();
-                // Outer Shadow/Border for 3D look
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.fillStyle = this.color;
@@ -182,7 +195,6 @@
                 ctx.strokeStyle = '#1e120a';
                 ctx.stroke();
 
-                // Detailed concentric rings for authentic coins
                 if(this.type !== 'striker') {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius * 0.6, 0, Math.PI * 2);
@@ -194,7 +206,6 @@
                     ctx.fillStyle = this.color === '#fff' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)';
                     ctx.fill();
                 } else {
-                    // Unique Striker Design pattern
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius * 0.7, 0, Math.PI * 2);
                     ctx.strokeStyle = 'rgba(255,255,255,0.6)';
@@ -217,11 +228,9 @@
                 this.vx *= FRICTION;
                 this.vy *= FRICTION;
 
-                // Stop completely if moving extremely slow
                 if (Math.abs(this.vx) < 0.08) this.vx = 0;
                 if (Math.abs(this.vy) < 0.08) this.vy = 0;
 
-                // Secure Wall Collisions (Includes anti-stuck clipping fix)
                 if (this.x - this.radius < 0) { this.x = this.radius; this.vx *= -1; }
                 if (this.x + this.radius > BOARD_SIZE) { this.x = BOARD_SIZE - this.radius; this.vx *= -1; }
                 if (this.y - this.radius < 0) { this.y = this.radius; this.vy *= -1; }
@@ -234,10 +243,8 @@
 
         function initGame() {
             entities = [];
-            // Spawn Center Red Queen
             entities.push(new Entity(BOARD_SIZE / 2, BOARD_SIZE / 2, COIN_RADIUS, '#d63031', 'red', 50));
 
-            // Classical Carrom Cluster Arrangement
             const layers = [
                 { count: 6, radius: 26 },
                 { count: 12, radius: 50 }
@@ -250,7 +257,6 @@
                     let cx = BOARD_SIZE / 2 + Math.cos(angle) * layer.radius;
                     let cy = BOARD_SIZE / 2 + Math.sin(angle) * layer.radius;
                     
-                    // Alternate white and black colors perfectly
                     let color = (index % 2 === 0) ? '#fff' : '#2d3436';
                     let type = (index % 2 === 0) ? 'white' : 'black';
                     let points = (index % 2 === 0) ? 20 : 10;
@@ -284,7 +290,6 @@
                     let minDist = e1.radius + e2.radius;
 
                     if (dist < minDist) {
-                        // Anti-stuck patch: resolve overlapping position directly before velocity math
                         let overlap = minDist - dist;
                         let nx = dx / (dist || 1);
                         let ny = dy / (dist || 1);
@@ -294,7 +299,6 @@
                         e2.x += nx * (overlap * 0.5);
                         e2.y += ny * (overlap * 0.5);
 
-                        // Elastic dynamic impact vectors
                         let kx = e1.vx - e2.vx;
                         let ky = e1.vy - e2.vy;
                         let p = 2 * (nx * kx + ny * ky) / 2; 
@@ -324,12 +328,10 @@
                 });
             });
 
-            // Striker Foul reset rule
             pockets.forEach(p => {
                 let dist = Math.sqrt((striker.x - p.x)**2 + (striker.y - p.y)**2);
                 if (dist < POCKET_RADIUS) {
                     striker.vx = 0; striker.vy = 0;
-                    // Move it safely away so it doesn't loop fire foul triggers
                     striker.x = -999; 
                     msgDiv.innerText = "Foul! Striker sunk.";
                 }
@@ -360,7 +362,6 @@
         function endTurn() {
             isMoving = false;
             
-            // Loop dynamic turn rule checker
             if (!coinScoredThisTurn) {
                 currentTurn = currentTurn === 'player' ? 'robot' : 'player';
             }
@@ -386,10 +387,7 @@
             let activeCoins = entities.filter(e => !e.isPocketed);
             if (activeCoins.length === 0) { initGame(); return; }
 
-            // Target selection logic
             let target = activeCoins[Math.floor(Math.random() * activeCoins.length)];
-            
-            // Place striker on robot's baseline bar randomly
             striker.x = 120 + Math.random() * (BOARD_SIZE - 240);
 
             setTimeout(() => {
@@ -404,33 +402,43 @@
             }, 600);
         }
 
-        // Controls input listeners
-        let mouseX = 0, mouseY = 0;
-        
-        strikerSlider.addEventListener('input', (e) => {
-            if (currentTurn === 'player' && !isMoving) {
-                striker.x = parseInt(e.target.value);
+        // Integrated Input Coordinates Extractor (Handles PC & Responsive Mobile Bounds)
+        function getCanvasCoords(e) {
+            let rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
             }
-        });
 
-        canvas.addEventListener('mousedown', (e) => {
+            return {
+                x: (clientX - rect.left) * (BOARD_SIZE / rect.width),
+                y: (clientY - rect.top) * (BOARD_SIZE / rect.height)
+            };
+        }
+
+        function handleStart(coords) {
             if (currentTurn !== 'player' || isMoving) return;
-            let rect = canvas.getBoundingClientRect();
-            let mX = e.clientX - rect.left;
-            let mY = e.clientY - rect.top;
-
-            if (Math.sqrt((mX - striker.x)**2 + (mY - striker.y)**2) < STRIKER_RADIUS + 25) {
+            // Target zone expanded slightly (+40) for touch devices
+            if (Math.sqrt((coords.x - striker.x)**2 + (coords.y - striker.y)**2) < STRIKER_RADIUS + 40) {
                 isAiming = true;
+                mouseX = coords.x;
+                mouseY = coords.y;
             }
-        });
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
-            let rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = e.clientY - rect.top;
-        });
+        function handleMove(coords) {
+            if (isAiming) {
+                mouseX = coords.x;
+                mouseY = coords.y;
+            }
+        }
 
-        window.addEventListener('mouseup', () => {
+        function handleEnd() {
             if (isAiming) {
                 isAiming = false;
                 let dx = striker.x - mouseX;
@@ -445,39 +453,54 @@
                     strikerSlider.disabled = true;
                 }
             }
+        }
+
+        // Slider Control
+        strikerSlider.addEventListener('input', (e) => {
+            if (currentTurn === 'player' && !isMoving) {
+                striker.x = parseInt(e.target.value);
+            }
         });
+
+        // Mouse Event Handlers
+        canvas.addEventListener('mousedown', (e) => handleStart(getCanvasCoords(e)));
+        canvas.addEventListener('mousemove', (e) => handleMove(getCanvasCoords(e)));
+        window.addEventListener('mouseup', handleEnd);
+
+        // Mobile Touch Event Handlers
+        canvas.addEventListener('touchstart', (e) => {
+            handleStart(getCanvasCoords(e));
+            if (isAiming) e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            handleMove(getCanvasCoords(e));
+            if (isAiming) e.preventDefault();
+        }, { passive: false });
+
+        window.addEventListener('touchend', handleEnd);
 
         // Elegant Original Wooden Board Art Renderer
         function drawOriginalBoard() {
             ctx.save();
-            
-            // Outer Frame wood shading effect
             ctx.strokeStyle = 'rgba(0,0,0,0.1)';
             ctx.lineWidth = 8;
             ctx.strokeRect(4, 4, BOARD_SIZE-8, BOARD_SIZE-8);
 
-            // Fine Traditional Pattern Lines (Baselines)
             ctx.strokeStyle = "#a27d56";
             ctx.lineWidth = 2;
 
-            // 4 Corner baseline layouts
-            // Bottom Bar
             ctx.strokeRect(90, BOARD_SIZE - 105, BOARD_SIZE - 180, 15);
             ctx.beginPath(); ctx.arc(90, BOARD_SIZE - 97.5, 7.5, 0, Math.PI*2); ctx.fillStyle="#a27d56"; ctx.fill();
             ctx.beginPath(); ctx.arc(BOARD_SIZE - 90, BOARD_SIZE - 97.5, 7.5, 0, Math.PI*2); ctx.fill();
 
-            // Top Bar
             ctx.strokeRect(90, 90, BOARD_SIZE - 180, 15);
             ctx.beginPath(); ctx.arc(90, 97.5, 7.5, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(BOARD_SIZE - 90, 97.5, 7.5, 0, Math.PI*2); ctx.fill();
 
-            // Left Bar
             ctx.strokeRect(90, 90, 15, BOARD_SIZE - 180);
-            
-            // Right Bar
             ctx.strokeRect(BOARD_SIZE - 105, 90, 15, BOARD_SIZE - 180);
 
-            // Diagonal corner target lines
             ctx.lineWidth = 1.5;
             const corners = [
                 {x1: 40, y1: 40, x2: 150, y2: 150},
@@ -492,7 +515,6 @@
                 ctx.stroke();
             });
 
-            // Beautiful Concentric Center Pattern Rose Circle
             ctx.beginPath();
             ctx.arc(BOARD_SIZE/2, BOARD_SIZE/2, 65, 0, Math.PI * 2);
             ctx.strokeStyle = "#a27d56";
@@ -510,7 +532,6 @@
             ctx.strokeStyle = "#d63031";
             ctx.stroke();
 
-            // Pocket Backgrounds
             pockets.forEach(p => {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, POCKET_RADIUS, 0, Math.PI * 2);
@@ -529,7 +550,6 @@
             
             drawOriginalBoard();
 
-            // Physics Update and Drawing frames
             striker.update();
             striker.draw();
 
@@ -542,7 +562,6 @@
                 checkCollisions();
                 checkPockets();
 
-                // Wait until every piece rests perfectly
                 let hardwareMoving = Math.abs(striker.vx) > 0 || Math.abs(striker.vy) > 0 ||
                     entities.some(c => Math.abs(c.vx) > 0 || Math.abs(c.vy) > 0);
 
@@ -551,7 +570,6 @@
                 }
             }
 
-            // Interactive vector aim line
             if (isAiming) {
                 ctx.save();
                 ctx.beginPath();
@@ -567,7 +585,6 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Initialize setup
         initGame();
         gameLoop();
     </script>
